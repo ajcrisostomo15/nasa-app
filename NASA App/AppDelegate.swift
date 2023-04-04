@@ -7,6 +7,7 @@
 
 import UIKit
 
+var apiKey = "fANWw6FeoKeaBCiZp6HiIB3dET6WQdjalCxiW7Sk"
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
