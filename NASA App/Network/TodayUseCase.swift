@@ -14,7 +14,7 @@ class TodayUseCase {
         self.gateWay = gateWay
     }
     
-    func execute(param: APODParam) -> Single<APODResp> {
+    func execute(param: APODParam) -> Observable<APODResp> {
         return gateWay.getTodaysData(param: param)
     }
 }

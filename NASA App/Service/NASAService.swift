@@ -15,6 +15,7 @@ class NASAService: MoyaProvider<Service> {
 
 enum Service: NASABaseHTTPService {
     case viewToday(param: APODParam)
+    case setDates(param: APODSetDatesParam)
 }
 
 extension Service: TargetType {
@@ -32,6 +33,8 @@ extension Service: TargetType {
         switch self {
         case .viewToday(let param):
             return .requestParameters(parameters: param.toJSON(), encoding: encoding)
+        case .setDates(let param):
+            return .requestParameters(parameters: param.toJSON(), encoding: encoding)
         }
     }
     
@@ -41,14 +44,16 @@ extension Service: TargetType {
     
     var path: String {
         switch self {
-        case .viewToday:
+        case .viewToday,
+                .setDates:
             return "planetary/apod"
         }
     }
     
     var method: Method {
         switch self {
-        case .viewToday:
+        case .viewToday,
+                .setDates:
             return .get
         }
     }
