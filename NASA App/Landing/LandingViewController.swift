@@ -11,7 +11,6 @@ import RxSwift
 import SnapKit
 
 enum ScreenType {
-    case landing
     case today
     case specificDay
     case rangeOfDates
@@ -106,19 +105,34 @@ class LandingViewController: UIViewController {
         todayButton.rx.tap.bind {
             self.navigateTo(screen: .today)
         }.disposed(by: self.disposeBag)
+        
+        specificDayButton.rx.tap.bind {
+            self.navigateTo(screen: .specificDay)
+        }.disposed(by: self.disposeBag)
+        
+        browseButton.rx.tap.bind {
+            self.navigateTo(screen: .rangeOfDates)
+        }.disposed(by: self.disposeBag)
     }
     
     private func navigateTo(screen: ScreenType) {
+        let service = NASAService()
+        let gateway = APODGateway(service: service)
+        let todayUseCase = TodayUseCase(gateWay: gateway)
+        let setDatesUseCase = SetDatesUseCase(gateWay: gateway)
+        let viewModel = ApodViewModel(todayUseCase: todayUseCase, setDatesUseCase: setDatesUseCase)
         switch screen {
         case .today:
-            let service = NASAService()
-            let gateway = APODGateway(service: service)
-            let usecase = TodayUseCase(gateWay: gateway)
-            let viewModel = ApodViewModel(todayUseCase: usecase)
+            viewModel.getTodaysData()
             let vc = APODViewController(viewModel: viewModel)
             self.navigationController?.pushViewController(vc, animated: true)
-        default:
-            break
+        case .rangeOfDates:
+            let vc = APODListViewController(viewModel: viewModel)
+            self.navigationController?.pushViewController(vc, animated: true)
+        case .specificDay:
+            viewModel.shouldShowDatePicker = true
+            let vc = APODViewController(viewModel: viewModel)
+            self.navigationController?.pushViewController(vc, animated: true)
         }
     }
 }

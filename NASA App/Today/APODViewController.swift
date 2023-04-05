@@ -12,6 +12,15 @@ import Toast_Swift
 import SwiftDate
 
 class APODViewController: UIViewController {
+    private lazy var welcomeLabel: UILabel = {
+        let label = UILabel()
+        label.numberOfLines = 0
+        label.textAlignment = .center
+        label.font = UIFont.systemFont(ofSize: 14, weight: .bold)
+        label.textColor = .black
+        label.text = "Astronomy Picture of the day"
+        return label
+    }()
     private lazy var dateLabel: UILabel = {
         let label = UILabel()
         label.textAlignment = .center
@@ -50,16 +59,29 @@ class APODViewController: UIViewController {
     }()
     
     private lazy var datePicker: UIDatePicker = {
-        let action = UIAction { _ in
-            self.showInfoForDatePicked()
-        }
-        let datePicker = UIDatePicker(frame: .zero, primaryAction: action)
+        let datePicker = UIDatePicker()
         datePicker.date = Date()
         datePicker.locale = .current
         datePicker.preferredDatePickerStyle = .compact
         datePicker.datePickerMode = .date
         
         return datePicker
+    }()
+    
+    private lazy var showPhotoTodayButton: UIButton = {
+        let button = UIButton()
+        button.setTitle("Go", for: .normal)
+        button.configuration = .filled()
+        
+        return button
+    }()
+    
+    private lazy var datesStackView: UIStackView = {
+        let stackView = UIStackView(arrangedSubviews: [datePicker, showPhotoTodayButton])
+        stackView.spacing = 8
+        stackView.axis = .horizontal
+        stackView.distribution = .fillEqually
+        return stackView
     }()
     
     private let disposeBag = DisposeBag()
@@ -74,53 +96,74 @@ class APODViewController: UIViewController {
         super.viewDidLoad()
         setupInterface()
         setupBindings()
-        viewModel.getTodaysData()
     }
     
     private func setupInterface() {
         view.backgroundColor = .white
-        view.addSubview(datePicker)
+        view.addSubview(welcomeLabel)
+        welcomeLabel.snp.makeConstraints { make in
+            make.top.equalTo(view.safeAreaLayoutGuide.snp.top).offset(16)
+            make.left.equalToSuperview().offset(16)
+            make.right.equalToSuperview().offset(-16)
+        }
+        
+        if viewModel.shouldShowDatePicker {
+            view.addSubview(datesStackView)
+            datesStackView.snp.makeConstraints { make in
+                make.top.equalTo(welcomeLabel.snp.bottom).offset(16)
+                make.centerX.equalToSuperview()
+            }
+        }
+        
         view.addSubview(headerLabel)
-        view.addSubview(dateLabel)
         view.addSubview(photoImageView)
         view.addSubview(explanationLabel)
-        
-        datePicker.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide.snp.top).offset(16)
-            make.centerX.equalToSuperview()
-        }
+    
         headerLabel.snp.makeConstraints { make in
-            make.top.equalTo(datePicker.snp.bottom).offset(16)
-            make.centerX.equalToSuperview()
-        }
-        
-        dateLabel.snp.makeConstraints { make in
-            make.top.equalTo(headerLabel.snp.bottom).offset(4)
+            if self.viewModel.shouldShowDatePicker {
+                make.top.equalTo(datesStackView.snp.bottom).offset(16)
+            } else {
+                make.top.equalTo(welcomeLabel.snp.bottom).offset(16)
+            }
+            
             make.centerX.equalToSuperview()
         }
         
         explanationLabel.snp.makeConstraints { make in
-            make.top.equalTo(dateLabel.snp.bottom).offset(4)
+            make.top.equalTo(headerLabel.snp.bottom).offset(4)
             make.left.equalToSuperview().offset(16)
             make.right.equalToSuperview().offset(-16)
         }
         
         photoImageView.snp.makeConstraints { make in
             make.width.equalTo(UIScreen.main.bounds.width - 32)
-            make.height.equalTo(350)
-            make.top.equalTo(explanationLabel.snp.bottom)
+            make.top.equalTo(explanationLabel.snp.bottom).offset(8)
             make.centerX.equalToSuperview()
+            make.bottom.equalToSuperview().offset(-16)
         }
     }
     
     private func setupBindings() {
         viewModel.data.subscribe { data in
+            guard let data = data else { return }
             self.populateFields(withData: data)
         }.disposed(by: self.disposeBag)
         
         viewModel.errorMessage.subscribe { message in
             self.view.makeToast(message, duration: 3.0, position: .bottom)
         }.disposed(by: self.disposeBag)
+        
+        showPhotoTodayButton.rx.tap.bind {
+            self.showInfoForDatePicked()
+        }.disposed(by: self.disposeBag)
+        
+        viewModel.showActivity.subscribe(onNext: {
+            self.view.makeToastActivity(.center)
+        }).disposed(by: self.disposeBag)
+        
+        viewModel.hideActivity.subscribe(onNext: {
+            self.view.hideAllToasts(includeActivity: true, clearQueue: true)
+        }).disposed(by: self.disposeBag)
     }
     
     private func populateFields(withData data: ApodData) {
@@ -131,7 +174,6 @@ class APODViewController: UIViewController {
     }
     
     private func showInfoForDatePicked() {
-        print("Selected date/time:", datePicker.date)
         let date = DateInRegion(datePicker.date, region: Region.local)
         viewModel.getTodaysData(date: date)
     }
